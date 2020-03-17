@@ -56,6 +56,7 @@ struct capability_info procbased[21] =
 	{ 19, "CR8-load exiting" },
 	{ 20, "CR8-store exiting" },
 	{ 21, "Use TPR shadow" },
+	{ 22, "NMI-window exiting" },
 	{ 23, "MOV-DR exiting" },
 	{ 24, "Unconditional I/O exiting" },
 	{ 25, "Use I/O bitmaps" },
@@ -97,7 +98,7 @@ struct capability_info secondary_procbased[27] =
 	{ 28, "Enable ENCLV exiting" }
 };
 
-struct capability_info exit[13] =
+struct capability_info exit_control[13] =
 {
 	{ 2, "Save debug controls" },
 	{ 9, "Host address-space size" },
@@ -194,7 +195,7 @@ detect_vmx_features(void)
 	rdmsr(IA32_VMX_EXIT_CTLS, lo, hi);
 	pr_info("Exit Controls MSR: 0x%llx\n",
 		(uint64_t)(lo | (uint64_t)hi << 32));
-	report_capability(exit, 13, lo, hi);
+	report_capability(exit_control, 13, lo, hi);
 
 	/* Entry controls */
 	rdmsr(IA32_VMX_ENTRY_CTLS, lo, hi);
