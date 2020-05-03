@@ -5843,13 +5843,17 @@ void dump_vmcs(void)
  */
 static int vmx_handle_exit(struct kvm_vcpu *vcpu,
 	enum exit_fastpath_completion exit_fastpath)
-{
+{       
+	uint64_t start_time = rdtsc();
+	uint64_t end_time;
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	u32 exit_reason = vmx->exit_reason;
 	u32 vectoring_info = vmx->idt_vectoring_info;
 	extern atomic_t total_vm_exits;
 	extern atomic_t vm_exits_array[69];
-
+	extern atomic64_t total_time;
+	extern atomic64_t total_time_array[69];
+	int ret;
 	trace_kvm_exit(exit_reason, vcpu, KVM_ISA_VMX);
 	
 	atomic_inc(&total_vm_exits);
@@ -5959,7 +5963,11 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu,
 	if (!kvm_vmx_exit_handlers[exit_reason])
 		goto unexpected_vmexit;
 
-	return kvm_vmx_exit_handlers[exit_reason](vcpu);
+	ret = kvm_vmx_exit_handlers[exit_reason](vcpu);
+	end_time = rdtsc();
+	atomic64_add(end_time - start_time, &total_time);
+	atomic64_add(end_time - start_time, &total_time_array[exit_reason]);
+	return ret;
 
 unexpected_vmexit:
 	vcpu_unimpl(vcpu, "vmx: unexpected exit reason 0x%x\n", exit_reason);

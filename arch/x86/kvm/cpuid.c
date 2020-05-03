@@ -1059,6 +1059,10 @@ atomic_t total_vm_exits;
 EXPORT_SYMBOL(total_vm_exits);
 atomic_t vm_exits_array[69];
 EXPORT_SYMBOL(vm_exits_array);
+atomic64_t total_time;
+EXPORT_SYMBOL(total_time);
+atomic64_t total_time_array[69];
+EXPORT_SYMBOL(total_time_array);
 
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
@@ -1072,16 +1076,29 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 	if (eax == 0x4fffffff) {
 		printk("EAX is %x. Inside 1st new leaf node.\n", eax);
 		eax = atomic_read(&total_vm_exits);
+		ebx = 0;
+		ecx = 0;
+		edx = 0;
 	}
 	else if (eax == 0x4ffffffe) {
-		printk("EAX is %x. Inside 2nd new leaf node.\n", eax);
+		printk("EAX is %x. Inside 2nd new leaf node. Total time = %lld\n", eax, atomic64_read(&total_time));
+		ecx = atomic64_read(&total_time);
+		ebx = atomic64_read(&total_time) >> 32;
+		eax = 0;
+		edx = 0;
+
 	}
 	else if (eax == 0x4ffffffd) {
-		printk("EAX is %x. Inside 3rd leaf node.\n", eax);
+		printk("EAX is %x. ECX is %d. Inside 3rd leaf node. Exits = %d\n", eax, ecx, atomic_read(&vm_exits_array[ecx]));
 		eax = atomic_read(&vm_exits_array[ecx]);
+		ebx = 0;
+		ecx = 0;
+		edx = 0;
 	}
 	else if (eax == 0x4ffffffc) {
-		printk("EAX is %x. Inside 4th leaf node.\n", eax);
+		printk("EAX is %x. ECX is %d. Inside 4th leaf node. Time = %lld\n", eax, ecx, atomic64_read(&total_time_array[ecx]));
+		ecx = atomic64_read(&total_time_array[ecx]);
+		ebx = atomic64_read(&total_time_array[ecx]) >> 32;
 	}
 	else {
 		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
