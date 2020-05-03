@@ -5847,10 +5847,13 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu,
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	u32 exit_reason = vmx->exit_reason;
 	u32 vectoring_info = vmx->idt_vectoring_info;
-	extern atomic_t num_exits;
-	trace_kvm_exit(exit_reason, vcpu, KVM_ISA_VMX);
-	atomic_inc(&num_exits);
+	extern atomic_t total_vm_exits;
+	extern atomic_t vm_exits_array[69];
 
+	trace_kvm_exit(exit_reason, vcpu, KVM_ISA_VMX);
+	
+	atomic_inc(&total_vm_exits);
+	atomic_inc(&vm_exits_array[exit_reason]);
 	/*
 	 * Flush logged GPAs PML buffer, this will make dirty_bitmap more
 	 * updated. Another good is, in kvm_vm_ioctl_get_dirty_log, before

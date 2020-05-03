@@ -1055,8 +1055,10 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
 
-atomic_t num_exits;
-EXPORT_SYMBOL(num_exits);
+atomic_t total_vm_exits;
+EXPORT_SYMBOL(total_vm_exits);
+atomic_t vm_exits_array[69];
+EXPORT_SYMBOL(vm_exits_array);
 
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
@@ -1064,22 +1066,19 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 
 	if (cpuid_fault_enabled(vcpu) && !kvm_require_cpl(vcpu, 0))
 		return 1;
-	
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
  
 	if (eax == 0x4fffffff) {
-		printk("EAX is %x. Inside 1st leaf node.\n", eax);
-		eax = atomic_read(&num_exits);
-		ebx = 0;
-		ecx = 0;
-		edx = 0;
+		printk("EAX is %x. Inside 1st new leaf node.\n", eax);
+		eax = atomic_read(&total_vm_exits);
 	}
 	else if (eax == 0x4ffffffe) {
-		printk("EAX is %x. Inside 2nd leaf node.\n", eax);
+		printk("EAX is %x. Inside 2nd new leaf node.\n", eax);
 	}
 	else if (eax == 0x4ffffffd) {
 		printk("EAX is %x. Inside 3rd leaf node.\n", eax);
+		eax = atomic_read(&vm_exits_array[ecx]);
 	}
 	else if (eax == 0x4ffffffc) {
 		printk("EAX is %x. Inside 4th leaf node.\n", eax);
