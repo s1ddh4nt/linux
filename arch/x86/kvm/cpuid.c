@@ -1055,13 +1055,13 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
 
-atomic_t total_vm_exits;
+atomic_t total_vm_exits = ATOMIC_INIT(0);
 EXPORT_SYMBOL(total_vm_exits);
-atomic_t vm_exits_array[69];
+atomic_t vm_exits_array[69] = { ATOMIC_INIT(0) };
 EXPORT_SYMBOL(vm_exits_array);
-atomic64_t total_time;
+atomic64_t total_time = ATOMIC_INIT(0);
 EXPORT_SYMBOL(total_time);
-atomic64_t total_time_array[69];
+atomic64_t total_time_array[69] = { ATOMIC_INIT(0) };
 EXPORT_SYMBOL(total_time_array);
 
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
@@ -1075,30 +1075,87 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
  
 	if (eax == 0x4fffffff) {
 		printk("EAX is %x. Inside 1st new leaf node.\n", eax);
+		printk("Total VM exits = %d\n", atomic_read(&total_vm_exits));
 		eax = atomic_read(&total_vm_exits);
 		ebx = 0;
 		ecx = 0;
 		edx = 0;
 	}
 	else if (eax == 0x4ffffffe) {
-		printk("EAX is %x. Inside 2nd new leaf node. Total time = %lld\n", eax, atomic64_read(&total_time));
-		ecx = atomic64_read(&total_time);
-		ebx = atomic64_read(&total_time) >> 32;
+		printk("EAX is %x. Inside 2nd new leaf node.\n", eax);
+	        printk("Total time = %lld\n", atomic64_read(&total_time));
+		ecx = atomic64_read(&total_time); //Lower 32 bits of Total Time
+		ebx = atomic64_read(&total_time) >> 32; //Higher 32 bits of Total Time
 		eax = 0;
 		edx = 0;
 
 	}
 	else if (eax == 0x4ffffffd) {
-		printk("EAX is %x. ECX is %d. Inside 3rd leaf node. Exits = %d\n", eax, ecx, atomic_read(&vm_exits_array[ecx]));
-		eax = atomic_read(&vm_exits_array[ecx]);
-		ebx = 0;
-		ecx = 0;
-		edx = 0;
+		printk("EAX is %x. ECX is %d. Inside 4th leaf node.\n", eax, ecx);
+		if ( ecx >= 0 && ecx < 69) {
+			if ( ecx == 35 || ecx == 38 || ecx == 42 || ecx == 65) {
+				printk("INVALID ECX. Exit Reason not defined by SDM\n");
+				eax = 0;
+				ebx = 0;
+				ecx = 0;
+				edx = 0xffffffff;
+			}
+			else if (ecx == 3 || ecx == 4 || ecx == 5 || ecx == 6 || ecx == 11 || ecx == 16 || ecx == 17 || ecx == 33 || ecx == 34 || ecx == 51 || ecx == 66) {
+				printk("INVALID ECX. Exit Reason not enabled by KVM\n");
+				eax = 0;
+				ebx = 0;
+				ecx = 0;
+				edx = 0;
+			}
+			else {
+				printk("No. of exits for Exit:%d = %d\n", ecx, atomic_read(&vm_exits_array[ecx]));
+				eax = atomic_read(&vm_exits_array[ecx]);
+				ebx = 0;
+				ecx = 0;
+				edx = 0;
+			}
+		}
+		else {
+			printk("INVALID ECX. Exit Reason not defined by SDM\n");
+			eax = 0;
+			ebx = 0;
+			ecx = 0;
+			edx = 0xffffffff;
+		}
+	
 	}
 	else if (eax == 0x4ffffffc) {
-		printk("EAX is %x. ECX is %d. Inside 4th leaf node. Time = %lld\n", eax, ecx, atomic64_read(&total_time_array[ecx]));
-		ecx = atomic64_read(&total_time_array[ecx]);
-		ebx = atomic64_read(&total_time_array[ecx]) >> 32;
+		printk("EAX is %x. ECX is %d. Inside 4th leaf node.\n", eax, ecx);
+		if ( ecx >= 0 && ecx < 69) {
+			if ( ecx == 35 || ecx == 38 || ecx == 42 || ecx == 65) {
+				printk("INVALID ECX. Exit Reason not defined by SDM\n");
+				eax = 0;
+				ebx = 0;
+				ecx = 0;
+				edx = 0xffffffff;
+			}
+			else if (ecx == 3 || ecx == 4 || ecx == 5 || ecx == 6 || ecx == 11 || ecx == 16 || ecx == 17 || ecx == 33 || ecx == 34 || ecx == 51 || ecx == 66) {
+				printk("INVALID ECX. Exit Reason not enabled by KVM\n");
+				eax = 0;
+				ebx = 0;
+				ecx = 0;
+				edx = 0;
+			}
+			else {
+				printk("Time for Exit:%d = %lld\n", ecx, atomic64_read(&total_time_array[ecx]));
+				ecx = atomic64_read(&total_time_array[ecx]); //Lower 32 bits of total time
+				ebx = atomic64_read(&total_time_array[ecx]) >> 32; //Higher 32 bits of total time
+				eax = 0;
+				edx = 0;
+			}
+		}
+		else {
+			printk("INVALID ECX. Exit Reason not defined by SDM\n");
+			eax = 0;
+			ebx = 0;
+			ecx = 0;
+			edx = 0xffffffff;
+		}
 	}
 	else {
 		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
